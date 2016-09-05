@@ -18,6 +18,7 @@ func Load(rows *sql.Rows, value interface{}) (int, error) {
 	if v.Kind() != reflect.Ptr || v.IsNil() {
 		return 0, ErrInvalidPointer
 	}
+
 	v = v.Elem()
 	isSlice := v.Kind() == reflect.Slice && v.Type().Elem().Kind() != reflect.Uint8
 	count := 0
@@ -28,6 +29,7 @@ func Load(rows *sql.Rows, value interface{}) (int, error) {
 		} else {
 			elem = v
 		}
+
 		ptr, err := findPtr(column, elem)
 		if err != nil {
 			return 0, err
@@ -53,14 +55,20 @@ func (dummyScanner) Scan(interface{}) error {
 }
 
 var (
-	dummyDest   sql.Scanner = dummyScanner{}
-	typeScanner             = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+	dummyDest sql.Scanner = dummyScanner{}
+	typeScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+	ptrFinder = reflect.TypeOf((*PtrFinder)(nil)).Elem()
 )
 
 func findPtr(column []string, value reflect.Value) ([]interface{}, error) {
+	if value.Addr().Type().Implements(ptrFinder) {
+		return value.Addr().Interface().(PtrFinder).FindPtr()
+	}
+
 	if value.Addr().Type().Implements(typeScanner) {
 		return []interface{}{value.Addr().Interface()}, nil
 	}
+
 	switch value.Kind() {
 	case reflect.Struct:
 		var ptr []interface{}
@@ -80,4 +88,8 @@ func findPtr(column []string, value reflect.Value) ([]interface{}, error) {
 		return findPtr(column, value.Elem())
 	}
 	return []interface{}{value.Addr().Interface()}, nil
+}
+
+type PtrFinder interface {
+	FindPtr() ([]interface{}, error)
 }

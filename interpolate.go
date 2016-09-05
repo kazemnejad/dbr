@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gocraft/dbr/dialect"
+	"github.com/kazemnejad/dbr/dialect"
 )
 
 // FIXME: This will be removed in the future
